@@ -46,14 +46,14 @@ func main() {
 			}
 		}
 		if err := stream.Err(); err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
-		refusal := acc.Choices[0].Message.Content
+		messageContent := acc.Choices[0].Message.Content
 
-		println(refusal)
+		println(messageContent)
 	} else {
 
-		log.Fatal("environment variable DEEPSEEK_API_KEY is not empty")
+		log.Fatal("environment variable DEEPSEEK_API_KEY is not set")
 	}
 
 }
