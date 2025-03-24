@@ -29,6 +29,8 @@ func statsWorker() {
 		runtime.ReadMemStats(&stats)
 
 		mutexStats.Lock()
+		// Lock messages counter before accessing it
+		// Consider creating a dedicated mutex for messages
 		savedStats = map[string]uint64{
 			"timestamp":  uint64(time.Now().Unix()),
 			"HeapInuse":  stats.HeapInuse,

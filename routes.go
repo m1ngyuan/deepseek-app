@@ -13,6 +13,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var defaultRoom = "hn"
+
+// LoadDefaultRoomFromEnv loads default room from environment variable
+func LoadDefaultRoomFromEnv() {
+	if room := os.Getenv("DEFAULT_ROOM"); room != "" {
+		defaultRoom = room
+	}
+}
+
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
 	LogInterval    int
@@ -52,11 +61,16 @@ func rateLimit(c *gin.Context) {
 }
 
 func index(c *gin.Context) {
-	c.Redirect(http.StatusMovedPermanently, "/room/hn")
+	c.Redirect(http.StatusMovedPermanently, "/room/"+defaultRoom)
 }
 
 func roomGET(c *gin.Context) {
 	roomid := c.Param("roomid")
+	// Validate roomid
+	if len(roomid) < 1 || len(roomid) > 20 {
+		c.String(http.StatusBadRequest, "Invalid room ID")
+		return
+	}
 	nick := c.Query("nick")
 	if len(nick) < 2 {
 		nick = ""
@@ -117,6 +131,10 @@ func streamRoom(c *gin.Context) {
 	}()
 
 	c.Stream(func(w io.Writer) bool {
+		// Check if client disconnected
+		if c.Writer.Written() {
+			return false
+		}
 		select {
 		case msg := <-listener:
 			// Create and use a mutex for messages if not already existing
@@ -126,6 +144,9 @@ func streamRoom(c *gin.Context) {
 			c.SSEvent("message", msg)
 		case <-ticker.C:
 			c.SSEvent("stats", Stats())
+		case <-c.Request.Context().Done():
+			// Client disconnected
+			return false
 		}
 		return true
 	})
