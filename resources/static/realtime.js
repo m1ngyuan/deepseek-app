@@ -15,9 +15,9 @@ function StartForm() {
 }
 
 function StartEpoch(timestamp) {
-    var windowSize = 60;
-    var height = 200;
-    var defaultData = histogram(windowSize, timestamp);
+    const windowSize = 60;
+    const height = 200;
+    const defaultData = histogram(windowSize, timestamp);
 
     window.heapChart = $('#heapChart').epoch({
         type: 'time.area',
@@ -116,7 +116,7 @@ function histogram(windowSize, timestamp) {
     return entries;
 }
 
-var entityMap = {
+const entityMap = {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -126,13 +126,13 @@ var entityMap = {
 };
 
 function rowStyle(nick) {
-    var classes = ['active', 'success', 'info', 'warning', 'danger'];
-    var index = hashCode(nick)%5;
+    const classes = ['active', 'success', 'info', 'warning', 'danger'];
+    const index = hashCode(nick) % 5;
     return classes[index];
 }
 
 function hashCode(s){
-  return Math.abs(s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a},0));             
+  return Math.abs(s.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a},0));
 }
 
 function escapeHtml(string) {

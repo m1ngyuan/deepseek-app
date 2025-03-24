@@ -102,6 +102,6 @@ func StartGin() {
 		port = "8080"
 	}
 	if err := router.Run(":" + port); err != nil {
-		log.Panicf("error: %s", err)
+		log.Fatalf("error: %s", err)
 	}
 }
