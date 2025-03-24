@@ -9,13 +9,14 @@ import (
 )
 
 var (
-	ips        = stats.New()
-	messages   = stats.New()
-	users      = stats.New()
-	mutexIps   sync.RWMutex
-	mutexUsers sync.RWMutex
-	mutexStats sync.RWMutex
-	savedStats = make(map[string]uint64)
+	ips           = stats.New()
+	messages      = stats.New()
+	users         = stats.New()
+	mutexIps      sync.RWMutex
+	mutexUsers    sync.RWMutex
+	mutexMessages sync.RWMutex
+	mutexStats    sync.RWMutex
+	savedStats    = make(map[string]uint64)
 )
 
 func statsWorker() {

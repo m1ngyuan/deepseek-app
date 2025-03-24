@@ -92,7 +92,10 @@ func roomPOST(c *gin.Context) {
 		"nick":    html.EscapeString(nick),
 		"message": html.EscapeString(message),
 	}
+	// Create and use a mutex for messages if not already existing
+	mutexMessages.Lock()
 	messages.Add("inbound", 1)
+	mutexMessages.Unlock()
 	room(roomid).Submit(post)
 	c.JSON(http.StatusOK, post)
 }
@@ -101,17 +104,25 @@ func streamRoom(c *gin.Context) {
 	roomid := c.Param("roomid")
 	listener := openListener(roomid)
 	ticker := time.NewTicker(1 * time.Second)
+	// Create and use a mutex for users if not already existing
+	mutexUsers.Lock()
 	users.Add("connected", 1)
+	mutexUsers.Unlock()
 	defer func() {
 		closeListener(roomid, listener)
 		ticker.Stop()
+		mutexUsers.Lock()
 		users.Add("disconnected", 1)
+		mutexUsers.Unlock()
 	}()
 
 	c.Stream(func(w io.Writer) bool {
 		select {
 		case msg := <-listener:
+			// Create and use a mutex for messages if not already existing
+			mutexMessages.Lock()
 			messages.Add("outbound", 1)
+			mutexMessages.Unlock()
 			c.SSEvent("message", msg)
 		case <-ticker.C:
 			c.SSEvent("stats", Stats())
