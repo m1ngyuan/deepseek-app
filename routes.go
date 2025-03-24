@@ -138,7 +138,7 @@ const (
 
 func roomPOST(c *gin.Context) {
 	roomid := c.Param("roomid")
-	nick := c.Query("nick")
+	nick := c.PostForm("nick")
 	message := c.PostForm("message")
 	message = strings.TrimSpace(message)
 
