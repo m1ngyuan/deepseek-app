@@ -114,7 +114,7 @@ function parseJSONStats(e) {
     // Verify data properties exist before using them
     if (!data.timestamp || !data.HeapInuse || !data.StackInuse ||
         !data.Mallocs || !data.Frees ||
-        !data.Connected || !data.Inbound || !data.Outbound) {
+        !data.Connected || data.Inbound == null || data.Outbound == null) {
         console.error('Missing required properties in stats data');
         return {heap: [], mallocs: [], messages: []};
     }
