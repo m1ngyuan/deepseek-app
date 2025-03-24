@@ -19,7 +19,7 @@ func main() {
 
 }
 
-func c() {
+func validateAPIKey() {
 	if apiKey, ok := os.LookupEnv("DEEPSEEK_API_KEY"); ok {
 		baseURL := os.Getenv("DEEPSEEK_BASE_URL")
 		if baseURL == "" {
