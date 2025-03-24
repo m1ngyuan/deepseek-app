@@ -5,10 +5,25 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
+	ConfigRuntime()
+	StartWorkers()
+	StartGin()
+
+}
+
+func validateAPIKey() {
 	if apiKey, ok := os.LookupEnv("DEEPSEEK_API_KEY"); ok {
 		baseURL := os.Getenv("DEEPSEEK_BASE_URL")
 		if baseURL == "" {
@@ -59,5 +74,61 @@ func main() {
 
 		log.Fatal("environment variable DEEPSEEK_API_KEY is not set")
 	}
+}
 
+// ConfigRuntime sets the number of operating system threads.
+func ConfigRuntime() {
+	nuCPU := runtime.NumCPU()
+	runtime.GOMAXPROCS(nuCPU)
+	log.Printf("Running with %d CPUs\n", nuCPU)
+}
+
+// StartWorkers start starsWorker by goroutine.
+func StartWorkers() {
+	go statsWorker()
+}
+
+// StartGin starts gin web server with setting router.
+func StartGin() {
+	gin.SetMode(gin.ReleaseMode)
+
+	router := gin.Default()
+	router.Use(rateLimit, gin.Recovery())
+	router.LoadHTMLGlob("resources/*.templ.html")
+	router.Static("/static", "resources/static")
+	router.GET("/", index)
+	router.GET("/room/:roomid", roomGET)
+	router.POST("/room-post/:roomid", roomPOST)
+	router.GET("/stream/:roomid", streamRoom)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: router,
+	}
+
+	// Start server in a goroutine
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %s", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// Shutdown gracefully with timeout
+	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %s", err)
+	}
+	log.Println("Server exiting")
 }
