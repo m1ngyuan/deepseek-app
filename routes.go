@@ -5,20 +5,45 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+// RateLimitConfig holds rate limiting configuration
+type RateLimitConfig struct {
+	LogInterval    int
+	BlockThreshold int
+}
+
+var rateLimitConfig = RateLimitConfig{
+	LogInterval:    50,
+	BlockThreshold: 200,
+}
+
+// LoadRateLimitConfigFromEnv loads rate limit configuration from environment variables
+func LoadRateLimitConfigFromEnv() {
+	if val, err := strconv.Atoi(os.Getenv("RATE_LIMIT_LOG_INTERVAL")); err == nil && val > 0 {
+		rateLimitConfig.LogInterval = val
+	}
+	if val, err := strconv.Atoi(os.Getenv("RATE_LIMIT_BLOCK_THRESHOLD")); err == nil && val > 0 {
+		rateLimitConfig.BlockThreshold = val
+	}
+}
+
 func rateLimit(c *gin.Context) {
 	ip := c.ClientIP()
+	mutexIps.Lock()
 	value := int(ips.Add(ip, 1))
-	if value%50 == 0 {
+	mutexIps.Unlock()
+	if value%rateLimitConfig.LogInterval == 0 {
 		fmt.Printf("ip: %s, count: %d\n", ip, value)
 	}
-	if value >= 200 {
-		if value%200 == 0 {
+	if value >= rateLimitConfig.BlockThreshold {
+		if value%rateLimitConfig.BlockThreshold == 0 {
 			fmt.Println("ip blocked")
 		}
 		c.Abort()

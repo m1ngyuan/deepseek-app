@@ -8,9 +8,26 @@ function StartRealtime(roomid, timestamp) {
 
 function StartForm() {
     $('#chat-message').focus();
-    $('#chat-form').ajaxForm(function() {
-        $('#chat-message').val('');
-        $('#chat-message').focus();
+    $('#chat-form').ajaxForm({
+        beforeSubmit: function(arr, $form) {
+            var messageValue = $('#chat-message').val().trim();
+            if (!messageValue) {
+                return false; // Prevent empty submissions
+            }
+            // Add loading state
+            $('#chat-submit').prop('disabled', true).val('Sending...');
+            return true;
+        },
+        success: function() {
+            $('#chat-message').val('');
+            $('#chat-message').focus();
+            $('#chat-submit').prop('disabled', false).val('Send');
+        },
+        error: function(xhr) {
+            console.error('Error sending message:', xhr.statusText);
+            alert('Failed to send message. Please try again.');
+            $('#chat-submit').prop('disabled', false).val('Send');
+        }
     });
 }
 
@@ -56,12 +73,26 @@ function StartEpoch(timestamp) {
 
 function StartSSE(roomid) {
     if (!window.EventSource) {
-        alert("EventSource is not enabled in this browser");
+        $('#chat').append('<tr class="danger"><td colspan="2">Your browser does not support Server-Sent Events. Please use a modern browser like Chrome, Firefox, or Safari.</td></tr>');
         return;
     }
     var source = new EventSource('/stream/'+roomid);
     source.addEventListener('message', newChatMessage, false);
     source.addEventListener('stats', stats, false);
+
+    // Handle connection errors
+    source.addEventListener('error', function(e) {
+        if (e.target.readyState === EventSource.CLOSED) {
+            $('#chat').append('<tr class="danger"><td colspan="2">Connection lost. Attempting to reconnect...</td></tr>');
+        } else if (e.target.readyState === EventSource.CONNECTING) {
+            $('#chat').append('<tr class="warning"><td colspan="2">Connecting to server...</td></tr>');
+        }
+    }, false);
+
+    // Handle successful connection
+    source.addEventListener('open', function() {
+        $('#chat').append('<tr class="success"><td colspan="2">Connected to chat server.</td></tr>');
+    }, false);
 }
 
 function stats(e) {
@@ -72,8 +103,21 @@ function stats(e) {
 }
 
 function parseJSONStats(e) {
-    var data = jQuery.parseJSON(e);
+    try {
+        var data = JSON.parse(e);
+    } catch (error) {
+        console.error('Error parsing stats data:', error);
+        return {heap: [], mallocs: [], messages: []};
+    }
     var timestamp = data.timestamp;
+
+    // Verify data properties exist before using them
+    if (!data.timestamp || !data.HeapInuse || !data.StackInuse ||
+        !data.Mallocs || !data.Frees ||
+        !data.Connected || !data.Inbound || !data.Outbound) {
+        console.error('Missing required properties in stats data');
+        return {heap: [], mallocs: [], messages: []};
+    }
 
     var heap = [
         {time: timestamp, y: data.HeapInuse},
@@ -98,9 +142,20 @@ function parseJSONStats(e) {
 }
 
 function newChatMessage(e) {
-    var data = jQuery.parseJSON(e.data);
+    try {
+        var data = JSON.parse(e.data);
+    } catch (error) {
+        console.error('Error parsing chat message:', error);
+        return;
+    }
+
     var nick = data.nick;
     var message = data.message;
+
+    // Sanitize user input to prevent XSS
+    nick = escapeHtml(nick);
+    message = escapeHtml(message);
+
     var style = rowStyle(nick);
     var html = "<tr class=\""+style+"\"><td>"+nick+"</td><td>"+message+"</td></tr>";
     $('#chat').append(html);

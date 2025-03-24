@@ -12,15 +12,18 @@ var (
 	ips        = stats.New()
 	messages   = stats.New()
 	users      = stats.New()
+	mutexIps   sync.RWMutex
+	mutexUsers sync.RWMutex
 	mutexStats sync.RWMutex
-	savedStats map[string]uint64
+	savedStats = make(map[string]uint64)
 )
 
 func statsWorker() {
-	c := time.Tick(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 	var lastMallocs uint64
 	var lastFrees uint64
-	for range c {
+	for range ticker.C {
 		var stats runtime.MemStats
 		runtime.ReadMemStats(&stats)
 
@@ -55,5 +58,8 @@ func Stats() map[string]uint64 {
 	mutexStats.RLock()
 	defer mutexStats.RUnlock()
 
+	if savedStats == nil {
+		return make(map[string]uint64)
+	}
 	return savedStats
 }
