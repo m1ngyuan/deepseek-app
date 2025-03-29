@@ -1,63 +1,80 @@
 package main
 
 import (
-	"context"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"log"
-	"os"
+	"net/http"
+	"time"
 )
 
-func main() {
-	if apiKey, ok := os.LookupEnv("DEEPSEEK_API_KEY"); ok {
-		baseURL := os.Getenv("DEEPSEEK_BASE_URL")
-		if baseURL == "" {
-			baseURL = "https://api.deepseek.com"
-		}
-		client := openai.NewClient(
-			option.WithAPIKey(apiKey), // defaults to os.LookupEnv("OPENAI_API_KEY")
-			option.WithBaseURL(baseURL),
-		)
-		stream := client.Chat.Completions.NewStreaming(context.TODO(), openai.ChatCompletionNewParams{
-			Messages: []openai.ChatCompletionMessageParamUnion{
-				openai.UserMessage("你如何评价小米ultra"),
-			},
-			Model: "deepseek-reasoner",
-		})
-		// optionally, an accumulator helper can be used
-		acc := openai.ChatCompletionAccumulator{}
+var wsUpgrader = websocket.Upgrader{
+	HandshakeTimeout: time.Second * 10,
+	ReadBufferSize:   1024,
+	WriteBufferSize:  1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
-		for stream.Next() {
-			chunk := stream.Current()
-			acc.AddChunk(chunk)
+func WebSocketHandler(c *gin.Context) {
 
-			if content, ok := acc.JustFinishedContent(); ok {
-				log.Println("Content stream finished:", content)
-			}
-
-			// if using tool calls
-			if tool, ok := acc.JustFinishedToolCall(); ok {
-				log.Println("Tool call stream finished:", tool.Index, tool.Name, tool.Arguments)
-			}
-
-			if refusal, ok := acc.JustFinishedRefusal(); ok {
-				log.Println("Refusal stream finished:", refusal)
-			}
-
-			// it's best to use chunks after handling JustFinished events
-			if len(chunk.Choices) > 0 {
-				log.Println(chunk.Choices[0].Delta.Content)
-			}
-		}
-		if err := stream.Err(); err != nil {
-			log.Fatalf("Stream error: %v", err)
-		}
-		finalContent := acc.Choices[0].Message.Content
-
-		log.Println(finalContent)
-	} else {
-
-		log.Fatal("environment variable DEEPSEEK_API_KEY is not set")
+	// 获取WebSocket连接
+	ws, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		panic(err)
 	}
 
+	defer ws.Close()
+
+	// 处理WebSocket消息
+	for {
+		messageType, p, err := ws.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		switch messageType {
+		case websocket.TextMessage:
+			log.Printf("处理文本消息, %s\n", string(p))
+			ws.WriteMessage(websocket.TextMessage, p)
+			// c.Writer.Write(p)
+		case websocket.BinaryMessage:
+			log.Println("处理二进制消息")
+		case websocket.CloseMessage:
+			log.Println("关闭websocket连接")
+			return
+		case websocket.PingMessage:
+			log.Println("处理ping消息")
+			ws.WriteMessage(websocket.PongMessage, []byte("ping"))
+		case websocket.PongMessage:
+			log.Println("处理pong消息")
+			ws.WriteMessage(websocket.PongMessage, []byte("pong"))
+		default:
+			log.Printf("未知消息类型: %d\n", messageType)
+			return
+		}
+	}
+
+}
+
+func NewServer() *gin.Engine {
+	gin.SetMode(gin.DebugMode) // 设置运行模式
+	gin.DisableConsoleColor()  // 禁用控制台输出的颜色
+	router := gin.Default()
+	return router
+}
+
+func main() {
+	// 创建Gin应用
+	app := NewServer()
+
+	// 注册WebSocket路由
+	app.GET("/ws", WebSocketHandler)
+
+	// 启动应用
+	err := app.Run(":8080")
+	if err != nil {
+		panic(err)
+	}
 }
