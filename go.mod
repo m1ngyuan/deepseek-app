@@ -2,7 +2,7 @@ module deepseek-app
 
 go 1.24
 
-require github.com/openai/openai-go v0.1.0-beta.2
+require github.com/openai/openai-go v0.1.0-beta.3
 
 require (
 	github.com/tidwall/gjson v1.18.0 // indirect

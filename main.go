@@ -22,7 +22,7 @@ func main() {
 			Messages: []openai.ChatCompletionMessageParamUnion{
 				openai.UserMessage("你如何评价小米ultra"),
 			},
-			Model: "deepseek-chat",
+			Model: "deepseek-reasoner",
 		})
 		// optionally, an accumulator helper can be used
 		acc := openai.ChatCompletionAccumulator{}
