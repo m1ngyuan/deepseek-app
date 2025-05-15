@@ -31,4 +31,4 @@ jobs:
       - name: Test
         run: go test -v ./...
         env:
-          DEEPSEEK_API_KEY: ${{ env.DEEPSEEK_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
