@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func chat() (string, error) {
+func chat(message string) (string, error) {
 	if apiKey, ok := os.LookupEnv("DEEPSEEK_API_KEY"); ok {
 		baseURL := os.Getenv("DEEPSEEK_BASE_URL")
 		if baseURL == "" {
@@ -21,9 +21,10 @@ func chat() (string, error) {
 		)
 		stream := client.Chat.Completions.NewStreaming(context.TODO(), openai.ChatCompletionNewParams{
 			Messages: []openai.ChatCompletionMessageParamUnion{
-				openai.UserMessage("你如何评价小米ultra"),
+				openai.UserMessage(message),
 			},
-			Model: "deepseek-reasoner",
+			Model:               "deepseek-reasoner",
+			MaxCompletionTokens: openai.Int(50000),
 		})
 		// optionally, an accumulator helper can be used
 		acc := openai.ChatCompletionAccumulator{}
@@ -54,6 +55,8 @@ func chat() (string, error) {
 			log.Fatalf("Stream error: %v", err)
 		}
 		finalContent := acc.Choices[0].Message.Content
+
+		log.Printf("total tokens: %d", acc.ChatCompletion.Usage.TotalTokens)
 
 		return finalContent, nil
 	} else {
