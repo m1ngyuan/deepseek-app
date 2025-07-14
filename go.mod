@@ -3,7 +3,7 @@ module deepseek-app
 go 1.24
 
 require (
-	github.com/openai/openai-go v1.8.2
+	github.com/openai/openai-go v1.10.1
 	github.com/stretchr/testify v1.10.0
 )
 
