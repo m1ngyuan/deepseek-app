@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"log"
 	"os"
+
+	"github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v2/option"
 )
 
 func chat(message string) (string, error) {
