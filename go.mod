@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/openai/openai-go/v2 v2.1.1
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
